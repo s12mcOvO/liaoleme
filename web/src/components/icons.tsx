@@ -284,7 +284,7 @@ export function Icon({ name, className, ...props }: IconProps) {
 
   return (
     <span
-      className={cn("inline-flex items-center justify-center", className)}
+      className={cn("inline-flex items-center justify-center [&>svg]:h-full [&>svg]:w-full", className)}
       role={props["aria-label"] ? "img" : "presentation"}
       aria-label={props["aria-label"]}
       aria-hidden={!props["aria-label"]}

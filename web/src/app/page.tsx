@@ -1,722 +1,447 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { RevealDiv, RevealSection } from "@/lib/reveal";
-import { Icon } from "@/components/icons";
+import { motion, useReducedMotion } from "motion/react";
+import {
+  HeroReveal,
+  RevealUp,
+  RevealScale,
+  StaggerGroup,
+  StaggerItem,
+} from "@/components/motion";
+import { Icon, type IconName } from "@/components/icons";
 
-const features = [
-  {
-    icon: "wheel" as const,
-    title: "随机转盘",
-    description:
-      "每天转动转盘决定今天是「撸」还是「不撸」，让决定不再纠结。",
-    ariaLabel: "随机转盘功能",
-  },
-  {
-    icon: "lock" as const,
-    title: "时间门控",
-    description:
-      "次数输入仅在打卡完成后开放，并且等到 20:00 之后才能真正记录，防止作弊。",
-    ariaLabel: "时间门控功能",
-  },
-  {
-    icon: "chart" as const,
-    title: "数据统计",
-    description:
-      "GitHub 风格热力图 + 折线图，让你直观看到每天的打卡轨迹和进步曲线。",
-    ariaLabel: "数据统计功能",
-  },
-  {
-    icon: "bell" as const,
-    title: "每日提醒",
-    description:
-      "每天 20:00 准时推送打卡提醒，养成习惯从未如此简单。",
-    ariaLabel: "每日提醒功能",
-  },
-  {
-    icon: "quote" as const,
-    title: "随机一言",
-    description:
-      "内置 Hitokoto 毒鸡汤一言服务，每天一句扎心话语激励你继续前行。",
-    ariaLabel: "随机一言功能",
-  },
-  {
-    icon: "bug" as const,
-    title: "调试面板",
-    description:
-      "内置完整调试系统，点击标题栏的 🐞 即可查看启动日志和数据库状态。",
-    ariaLabel: "调试面板功能",
-  },
-];
-
-const stats = [
-  { label: "版本", value: "1.2." },
-  { label: "Flutter", value: "3.7+" },
-  { label: "平台", value: "Android" },
-  { label: "协议", value: "MIT" },
-];
-
-const steps = [
-  { num: "01", title: "打开 App", desc: "每日打开「录了么」，一切从简" },
-  { num: "02", title: "转动转盘", desc: "转动转盘或直接点击按钮完成打卡" },
-  { num: "03", title: "查看统计", desc: "热力图记录你的每一天，看见进步" },
+const features: { icon: IconName; title: string; desc: string }[] = [
+  { icon: "wheel", title: "每日转盘", desc: "随机生成行动指令，告别选择困难，让命运替你决定今天该做什么。" },
+  { icon: "lock", title: "时间门控", desc: "仅在夜间特定时段开放打卡，从机制上杜绝补卡和虚假记录。" },
+  { icon: "chart", title: "热力图统计", desc: "GitHub 风格的年度贡献矩阵，用颜色深浅直观呈现你的坚持轨迹。" },
+  { icon: "bell", title: "每晚提醒", desc: "固定时间推送通知，像闹钟一样帮你建立稳定的打卡生物钟。" },
+  { icon: "quote", title: "毒鸡汤激励", desc: "接入 Hitokoto 接口，每天一句扎心语录，用现实鞭策你前进。" },
+  { icon: "bug", title: "开发者工具", desc: "内置日志查看器和数据库状态面板，方便排查问题和调试应用。" },
 ];
 
 const techStack = [
   { name: "Flutter", desc: "跨平台 UI 框架" },
-  { name: "SQLite", desc: "本地数据存储 (sqflite)" },
-  { name: "fl_chart", desc: "统计图表可视化" },
-  { name: "Notifications", desc: "每日提醒推送" },
-  { name: "Hitokoto API", desc: "一言毒鸡汤服务" },
-  { name: "shared_preferences", desc: "轻量配置存储" },
-  { name: "Open Source", desc: "MIT 协议开源" },
-  { name: "Android", desc: "原生 APK 分发" },
+  { name: "SQLite", desc: "本地数据持久化" },
+  { name: "fl_chart", desc: "数据可视化图表" },
+  { name: "Hitokoto API", desc: "一言文本服务" },
+  { name: "shared_preferences", desc: "轻量键值存储" },
+  { name: "local_notifications", desc: "系统级通知调度" },
 ];
 
-function HeatmapSVG() {
-  const weeks = 53;
-  const days = 7;
-  const cellSize = 10;
-  const gap = 2;
+const steps = [
+  { num: "01", title: "打开应用", desc: "无需注册，无需登录，打开即用。所有数据存储在本地。" },
+  { num: "02", title: "转动转盘", desc: "让随机转盘替你做出今天的选择，执行它，然后等待夜间打卡。" },
+  { num: "03", title: "回顾轨迹", desc: "在热力图中看到自己的坚持，用数据证明自律的力量。" },
+];
 
-  // Deterministic seed for consistent data
-  const seededRandom = (seed: number) => {
-    const x = Math.sin(seed * 9999) * 10000;
-    return x - Math.floor(x);
-  };
-
+function HeatmapGrid() {
   const cells = [];
-  for (let w = 0; w < weeks; w++) {
-    for (let d = 0; d < days; d++) {
-      const val = seededRandom(w * 7 + d);
-      const opacity =
-        val < 0.2 ? 0.05 : val < 0.4 ? 0.2 : val < 0.6 ? 0.4 : val < 0.8 ? 0.6 : 0.85;
-      cells.push(
-        <rect
-          key={`${w}-${d}`}
-          x={w * (cellSize + gap)}
-          y={d * (cellSize + gap)}
-          width={cellSize}
-          height={cellSize}
-          rx="2"
-          fill="white"
-          fillOpacity={opacity}
-          className="transition-all duration-300 hover:fill-opacity-100"
-        />
-      );
-    }
+  for (let i = 0; i < 371; i++) {
+    const seed = (i * 7919 + 104729) % 97;
+    const level = seed < 30 ? 0 : seed < 50 ? 1 : seed < 70 ? 2 : seed < 85 ? 3 : 4;
+    const opacity = level === 0 ? 0.06 : level * 0.22;
+    cells.push(
+      <div
+        key={i}
+        className="w-[10px] h-[10px] rounded-[2px]"
+        style={{
+          background:
+            level === 0
+              ? "rgba(255,255,255,0.06)"
+              : `rgba(59, 130, 246, ${opacity})`,
+        }}
+      />
+    );
   }
-
-  const width = weeks * (cellSize + gap);
-  const height = days * (cellSize + gap);
-
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="w-full"
-      style={{ height: "auto", maxHeight: "120px" }}
-      role="img"
-      aria-label="模拟的打卡热力图，显示一年内的打卡频率分布"
-    >
-      {cells}
-    </svg>
-  );
+  return <div className="grid grid-cols-[repeat(53,10px)] gap-[3px]">{cells}</div>;
 }
 
 function DeviceMockup() {
   return (
-    <div className="relative inline-flex flex-col items-center">
-      {/* Glow */}
-      <div className="absolute inset-0 -m-16 bg-foreground/5 blur-3xl rounded-full" />
-
-      {/* Phone frame */}
-      <div className="relative">
-        {/* Outer frame */}
-        <div
-          className="border-2 border-foreground/20 rounded-[2rem] p-2 bg-foreground/5"
-          style={{ width: 220, height: 420 }}
-        >
-          {/* Screen */}
-          <div className="w-full h-full rounded-[1.5rem] bg-foreground/10 overflow-hidden relative">
-            {/* Status bar */}
-            <div className="flex items-center justify-between px-5 pt-3 pb-1">
-              <span className="font-mono text-[8px] text-foreground/40">12:00</span>
-              <div className="flex gap-1">
-                <div className="w-3 h-[6px] bg-foreground/30 rounded-[1px]" />
-                <div className="w-3 h-[6px] bg-foreground/30 rounded-[1px]" />
+    <div className="relative mx-auto w-[280px]">
+      <div className="absolute -inset-4 rounded-[40px] bg-gradient-to-b from-blue-500/20 to-cyan-500/10 blur-2xl" />
+      <div className="relative rounded-[36px] border border-white/10 bg-zinc-900 p-3 shadow-2xl shadow-blue-500/10">
+        <div className="rounded-[28px] bg-black p-5 overflow-hidden">
+          <div className="flex items-center justify-between mb-6">
+            <span className="text-xs font-medium text-zinc-400">录了么</span>
+            <span className="text-[10px] text-zinc-600 font-mono">21:47</span>
+          </div>
+          <div className="text-center mb-6">
+            <p className="text-[11px] text-zinc-500 mb-2">今日转盘结果</p>
+            <div className="relative w-32 h-32 mx-auto mb-3">
+              <div className="absolute inset-0 rounded-full border-2 border-blue-500/30" />
+              <div className="absolute inset-2 rounded-full border border-cyan-500/20" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                  className="w-full h-full rounded-full"
+                  style={{
+                    background: "conic-gradient(from 0deg, #3b82f6, #06b6d4, #3b82f6)",
+                    opacity: 0.15,
+                  }}
+                />
               </div>
-            </div>
-
-            {/* App content mock */}
-            <div className="px-4 pt-4 pb-2">
-              {/* Title */}
-              <div className="text-center mb-4">
-                <div className="font-mono text-sm font-bold tracking-tight">录了么</div>
-                <div className="font-mono text-[7px] text-foreground/40 mt-0.5">
-                  What&apos;s done today?
-                </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">跑步</span>
               </div>
-
-              {/* Wheel */}
-              <div className="flex justify-center mb-4">
-                <div
-                  className="relative w-32 h-32 rounded-full border border-foreground/20 flex items-center justify-center"
-                  style={{ animation: "spin 20s linear infinite" }}
-                >
-                  <div className="absolute inset-3 rounded-full border border-dashed border-foreground/10" />
-                  <div className="text-center z-10">
-                    <div className="font-mono text-xl font-bold">?</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex gap-2 mb-3">
-                <div className="flex-1 h-7 rounded-full bg-foreground/20 flex items-center justify-center">
-                  <span className="font-mono text-[8px]">撸</span>
-                </div>
-                <div className="flex-1 h-7 rounded-full border border-foreground/20 flex items-center justify-center">
-                  <span className="font-mono text-[8px]">不撸</span>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="h-px bg-foreground/10 mb-3" />
-
-              {/* Quote */}
-              <div className="text-center">
-                <div className="font-mono text-[8px] text-foreground/50 italic">
-                  &ldquo;坚持就是胜利&rdquo;
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom nav */}
-            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-around py-2 border-t border-foreground/10">
-              <div className="w-4 h-4 bg-foreground/30 rounded-sm" />
-              <div className="w-4 h-4 border border-foreground/20 rounded-sm" />
-              <div className="w-4 h-4 border border-foreground/20 rounded-sm" />
             </div>
           </div>
+          <div className="space-y-2 mb-4">
+            <div className="h-8 rounded-lg bg-blue-500/90 flex items-center justify-center">
+              <span className="text-xs font-medium text-white">完成打卡</span>
+            </div>
+            <div className="h-8 rounded-lg border border-white/10 flex items-center justify-center">
+              <span className="text-xs text-zinc-400">查看统计</span>
+            </div>
+          </div>
+          <p className="text-center text-[10px] text-zinc-600 italic">
+            &ldquo;你只是看起来很努力。&rdquo;
+          </p>
         </div>
-
-        {/* Home indicator */}
-        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-16 h-[5px] bg-foreground/20 rounded-full" />
       </div>
-
-      <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
 
 export default function Home() {
+  const reduce = useReducedMotion();
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Skip link for accessibility */}
+    <div className="noise-overlay min-h-screen bg-background text-foreground">
+      {/* Skip link */}
       <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-foreground focus:text-background focus:px-4 focus:py-2 focus:rounded-full focus:text-sm"
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-white"
       >
-        跳转到主要内容
+        跳到主要内容
       </a>
 
       {/* Navigation */}
-      <nav
-        className="sticky top-0 z-50 border-b border-border/50 backdrop-blur-md bg-background/80"
-        aria-label="主导航"
-      >
-        <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group" aria-label="返回首页">
-            <span className="font-mono text-lg font-bold tracking-tight">
-              录了么
-            </span>
-            <span className="text-[11px] text-muted-foreground font-mono border border-border rounded-full px-2 py-0.5 group-hover:border-foreground/30 transition-colors">
-              v1.2.1
-            </span>
-          </Link>
-          <div className="flex items-center gap-4 sm:gap-6">
-            <Link
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500">
+              <span className="text-sm font-bold text-white">录</span>
+            </div>
+            <span className="text-sm font-semibold tracking-tight">录了么</span>
+          </div>
+          <div className="hidden items-center gap-8 md:flex">
+            <a href="#features" className="text-sm text-zinc-400 transition-colors hover:text-white">功能</a>
+            <a href="#how" className="text-sm text-zinc-400 transition-colors hover:text-white">使用方式</a>
+            <a href="#tech" className="text-sm text-zinc-400 transition-colors hover:text-white">技术栈</a>
+          </div>
+          <div className="flex items-center gap-3">
+            <a
               href="https://github.com/aoye666/liaoleme"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:flex"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="在 GitHub 上查看源码"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:text-white"
             >
-              <Icon name="github" className="w-4 h-4" />
-              <span>GitHub</span>
-            </Link>
-            <Link
-              href="https://github.com/aoye666/liaoleme/releases/latest"
-              className="inline-flex items-center gap-2 bg-foreground text-background px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-sm font-semibold hover:opacity-80 transition-opacity"
+              <Icon name="github" className="h-4 w-4" />
+              <span className="hidden sm:inline">GitHub</span>
+            </a>
+            <a
+              href="https://github.com/aoye666/liaoleme/releases"
               target="_blank"
               rel="noopener noreferrer"
+              className="btn-primary rounded-lg px-4 py-2 text-sm font-medium"
             >
-              <Icon name="download" className="w-4 h-4" />
-              <span className="hidden sm:inline">下载 APK</span>
-              <span className="sm:hidden">下载</span>
-            </Link>
+              下载 APK
+            </a>
           </div>
         </div>
       </nav>
 
-      <main id="main-content">
-        {/* Hero */}
-        <section className="relative overflow-hidden">
-          {/* Decorative grid */}
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage:
-                "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
-              backgroundSize: "60px 60px",
-            }}
-            aria-hidden="true"
-          />
+      {/* Hero */}
+      <section className="relative flex min-h-[100dvh] items-center overflow-hidden pt-16">
+        {/* Background elements */}
+        <div className="grid-pattern absolute inset-0" />
+        <div className="orb h-[500px] w-[500px] -top-40 -right-40 bg-blue-600/30" style={{ animationDelay: "0s" }} />
+        <div className="orb h-[400px] w-[400px] bottom-0 -left-40 bg-cyan-600/20" style={{ animationDelay: "-3s" }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
 
-          <div className="mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-32 sm:pb-24 md:pt-40 md:pb-32 relative">
-            <RevealDiv>
-              <div className="flex items-center gap-3 mb-8">
-                <div className="h-px w-8 bg-foreground" aria-hidden="true" />
-                <span className="font-mono text-xs tracking-widest uppercase text-muted-foreground">
-                  Flutter · SQLite · Open Source
-                </span>
+        <div className="relative mx-auto grid max-w-6xl gap-16 px-6 py-24 lg:grid-cols-2 lg:items-center">
+          {/* Left: Copy */}
+          <div>
+            <HeroReveal>
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-zinc-400">v1.2.2 已发布，开源免费</span>
               </div>
-            </RevealDiv>
+            </HeroReveal>
 
-            <RevealDiv delay={100}>
-              <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95] mb-8">
-                录了么
+            <HeroReveal delay={0.1}>
+              <h1 className="text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
+                用黑白的方式
                 <br />
-                <span className="text-muted-foreground">What&apos;s lu-ed</span>
-                <br />
-                <span className="text-muted-foreground">today?</span>
+                <span className="gradient-text">记录你的自律</span>
               </h1>
-            </RevealDiv>
+            </HeroReveal>
 
-            <RevealDiv delay={200}>
-              <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed mb-10">
-                一个帮你自律的黑白风每日打卡应用。
-                <br className="hidden sm:block" />
-                转盘决策 · 时间门控 · 热力图追踪 · 毒鸡汤激励
+            <HeroReveal delay={0.2}>
+              <p className="mt-6 max-w-md text-lg leading-relaxed text-zinc-400">
+                每日转盘决定行动，时间门控杜绝作弊，热力图见证坚持。Flutter 构建，纯本地存储，无需注册。
               </p>
-            </RevealDiv>
+            </HeroReveal>
 
-            <RevealDiv delay={300}>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link
-                  href="https://github.com/aoye666/liaoleme/releases/latest"
-                  className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-8 py-4 rounded-full text-sm font-semibold hover:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            <HeroReveal delay={0.3}>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <a
+                  href="https://github.com/aoye666/liaoleme/releases"
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="btn-primary flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold"
                 >
-                  <Icon name="download" className="w-4 h-4" />
-                  下载 APK
-                </Link>
-                <Link
+                  <Icon name="download" className="h-4 w-4" />
+                  免费下载
+                </a>
+                <a
                   href="https://github.com/aoye666/liaoleme"
-                  className="inline-flex items-center justify-center gap-2 border border-border px-8 py-4 rounded-full text-sm font-semibold hover:border-foreground/30 transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="btn-secondary flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium"
                 >
-                  <Icon name="github" className="w-4 h-4" />
-                  Star on GitHub
-                </Link>
+                  <Icon name="github" className="h-4 w-4" />
+                  查看源码
+                </a>
               </div>
-            </RevealDiv>
+            </HeroReveal>
 
-            {/* Stats bar */}
-            <RevealDiv delay={400}>
-              <div className="mt-12 sm:mt-16 pt-6 sm:pt-8 border-t border-border/50 flex flex-wrap gap-6 sm:gap-8 md:gap-16">
-                {stats.map((stat) => (
-                  <div key={stat.label}>
-                    <div className="font-mono text-xl sm:text-2xl font-bold">{stat.value}</div>
-                    <div className="text-[11px] sm:text-xs text-muted-foreground mt-1 font-mono">
-                      {stat.label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </RevealDiv>
-          </div>
-        </section>
-
-        {/* App Preview / Device Mockup */}
-        <section className="border-y border-border/50" aria-labelledby="preview-heading">
-          <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20 md:py-28">
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-              <RevealDiv>
+            <HeroReveal delay={0.4}>
+              <div className="mt-12 flex items-center gap-8 border-t border-white/5 pt-8">
                 <div>
-                  <span className="font-mono text-xs tracking-widest uppercase text-muted-foreground block mb-4">
-                    应用预览
-                  </span>
-                  <h2
-                    id="preview-heading"
-                    className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-6"
-                  >
-                    黑白极简
-                    <br />
-                    一眼钟情
-                  </h2>
-                  <p className="text-muted-foreground leading-relaxed max-w-md mb-8">
-                    去除一切多余装饰，只保留最核心的打卡功能。
-                    黑白配色让注意力聚焦在数据本身，每一次打开都是一种享受。
-                  </p>
-                  <ul className="space-y-3">
-                    {["无干扰纯黑白界面", "流畅转盘动画", "即时数据反馈"].map(
-                      (item) => (
-                        <li key={item} className="flex items-center gap-3 text-sm">
-                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-foreground/10 flex items-center justify-center">
-                            <Icon name="check" className="w-3 h-3" aria-label={item} />
-                          </span>
-                          <span className="text-muted-foreground">{item}</span>
-                        </li>
-                      )
-                    )}
-                  </ul>
+                  <p className="text-2xl font-bold">100%</p>
+                  <p className="text-xs text-zinc-500">开源免费</p>
                 </div>
-              </RevealDiv>
-
-              <RevealDiv delay={150}>
-                <div className="flex justify-center">
-                  <DeviceMockup />
+                <div>
+                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-xs text-zinc-500">需要注册</p>
                 </div>
-              </RevealDiv>
-            </div>
-          </div>
-        </section>
-
-        {/* Features Grid */}
-        <section className="border-b border-border/50" aria-labelledby="features-heading">
-          <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20 md:py-28">
-            <RevealDiv>
-              <div className="mb-12 sm:mb-16">
-                <span className="font-mono text-xs tracking-widest uppercase text-muted-foreground block mb-4">
-                  功能一览
-                </span>
-                <h2
-                  id="features-heading"
-                  className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight"
-                >
-                  六个核心功能
-                </h2>
+                <div>
+                  <p className="text-2xl font-bold">MIT</p>
+                  <p className="text-xs text-zinc-500">开源协议</p>
+                </div>
               </div>
-            </RevealDiv>
+            </HeroReveal>
+          </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-border/50">
-              {features.map((feature, i) => (
-                <RevealDiv key={feature.title} delay={i * 80}>
-                  <div className="bg-background p-6 sm:p-8 md:p-10 group hover:bg-secondary/50 transition-colors duration-300">
-                    <div className="flex items-center justify-center w-12 h-12 rounded-xl border border-border/50 mb-6 group-hover:border-foreground/20 group-hover:bg-foreground/5 transition-all duration-300">
-                      <Icon
-                        name={feature.icon}
-                        className="w-6 h-6 text-foreground/70"
-                        aria-label={feature.ariaLabel}
-                      />
+          {/* Right: Device mockup */}
+          <HeroReveal delay={0.3} className="hidden lg:block">
+            <DeviceMockup />
+          </HeroReveal>
+        </div>
+      </section>
+
+      <main id="main">
+        {/* Features - Bento Grid */}
+        <section id="features" className="relative py-32">
+          <div className="mx-auto max-w-6xl px-6">
+            <RevealUp>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                为自律而生的<span className="gradient-text">六大能力</span>
+              </h2>
+            </RevealUp>
+            <RevealUp delay={0.1}>
+              <p className="mt-4 max-w-lg text-zinc-400">
+                每一个功能都围绕一个目标：让你真正坚持下去。
+              </p>
+            </RevealUp>
+
+            <StaggerGroup className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {features.map((f, i) => (
+                <StaggerItem
+                  key={f.title}
+                  className={i === 0 ? "sm:col-span-2 lg:col-span-1" : ""}
+                >
+                  <div className="glass-card group h-full rounded-2xl p-6">
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20">
+                      <Icon name={f.icon} className="h-5 w-5 text-blue-400" />
                     </div>
-                    <h3 className="text-base sm:text-lg font-semibold mb-3 tracking-tight">
-                      {feature.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {feature.description}
-                    </p>
-                    <div className="mt-6 font-mono text-[11px] text-muted-foreground/40">
-                      {String(i + 1).padStart(2, "0")}
-                    </div>
+                    <h3 className="mb-2 text-base font-semibold">{f.title}</h3>
+                    <p className="text-sm leading-relaxed text-zinc-400">{f.desc}</p>
                   </div>
-                </RevealDiv>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerGroup>
           </div>
         </section>
 
-        {/* How It Works */}
-        <section className="border-b border-border/50" aria-labelledby="steps-heading">
-          <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20 md:py-28">
-            <RevealDiv>
-              <div className="mb-12 sm:mb-16">
-                <span className="font-mono text-xs tracking-widest uppercase text-muted-foreground block mb-4">
-                  使用流程
-                </span>
-                <h2
-                  id="steps-heading"
-                  className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight"
-                >
-                  三步开始自律
-                </h2>
-              </div>
-            </RevealDiv>
+        {/* How it works */}
+        <section id="how" className="relative py-32">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/[0.02] to-transparent" />
+          <div className="relative mx-auto max-w-6xl px-6">
+            <RevealUp>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                三步开始
+              </h2>
+            </RevealUp>
 
-            <div className="grid sm:grid-cols-3 gap-10 sm:gap-8">
-              {steps.map((step, i) => (
-                <RevealDiv key={step.num} delay={i * 120}>
-                  <div className="relative group">
-                    <div className="flex items-center gap-4 mb-4">
-                      <span className="font-mono text-4xl sm:text-5xl md:text-6xl font-bold text-border/50">
-                        {step.num}
-                      </span>
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-semibold mb-3">
-                      {step.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {step.desc}
-                    </p>
+            <div className="mt-16 grid gap-8 md:grid-cols-3">
+              {steps.map((s, i) => (
+                <RevealUp key={s.num} delay={i * 0.1}>
+                  <div className="relative">
+                    <span className="font-mono text-5xl font-bold text-white/5">{s.num}</span>
+                    <h3 className="mt-4 text-lg font-semibold">{s.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">{s.desc}</p>
                     {i < 2 && (
-                      <div className="hidden sm:block absolute top-6 -right-4 lg:-right-8 w-8 text-border/30">
-                        <Icon name="arrowRight" />
-                      </div>
+                      <div className="absolute top-8 -right-4 hidden h-px w-8 bg-gradient-to-r from-white/20 to-transparent md:block" />
                     )}
                   </div>
-                </RevealDiv>
+                </RevealUp>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Heatmap / Stats */}
-        <section className="border-b border-border/50" aria-labelledby="stats-heading">
-          <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20 md:py-28">
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-              <RevealDiv className="order-2 lg:order-1">
-                <div className="border border-border/50 rounded-2xl p-5 sm:p-6 bg-secondary/20">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="font-mono text-[11px] sm:text-xs text-muted-foreground">
-                      贡献热力图 · 2025
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] sm:text-xs text-muted-foreground">少</span>
-                      {[0, 1, 2, 3, 4].map((level) => (
-                        <div
-                          key={level}
-                          className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm"
-                          style={{
-                            backgroundColor:
-                              level === 0
-                                ? "rgba(255,255,255,0.05)"
-                                : `rgba(255,255,255,${0.2 + level * 0.2})`,
-                          }}
-                          aria-hidden="true"
-                        />
-                      ))}
-                      <span className="text-[10px] sm:text-xs text-muted-foreground">多</span>
-                    </div>
+        {/* Heatmap / Data section */}
+        <section className="py-32">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
+              <RevealScale>
+                <div className="glass-card rounded-2xl p-8 overflow-x-auto">
+                  <p className="mb-4 text-xs font-medium text-zinc-500 uppercase tracking-wider">年度打卡热力图</p>
+                  <HeatmapGrid />
+                  <div className="mt-4 flex items-center gap-2 text-[10px] text-zinc-600">
+                    <span>少</span>
+                    <div className="h-2.5 w-2.5 rounded-[2px] bg-white/5" />
+                    <div className="h-2.5 w-2.5 rounded-[2px] bg-blue-500/22" />
+                    <div className="h-2.5 w-2.5 rounded-[2px] bg-blue-500/44" />
+                    <div className="h-2.5 w-2.5 rounded-[2px] bg-blue-500/66" />
+                    <div className="h-2.5 w-2.5 rounded-[2px] bg-blue-500/88" />
+                    <span>多</span>
                   </div>
-                  <HeatmapSVG />
                 </div>
-              </RevealDiv>
+              </RevealScale>
 
-              <RevealDiv delay={150} className="order-1 lg:order-2">
-                <div>
-                  <span className="font-mono text-xs tracking-widest uppercase text-muted-foreground block mb-4">
-                    数据可视化
-                  </span>
-                  <h2
-                    id="stats-heading"
-                    className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-6"
-                  >
-                    GitHub
-                    <br />
-                    风格热力图
+              <div>
+                <RevealUp>
+                  <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                    数据不会说谎
                   </h2>
-                  <p className="text-muted-foreground leading-relaxed max-w-md">
-                    仿照 GitHub 贡献图设计，用色块深浅直观展示你的打卡频率。
-                    配合折线图，让你一眼看出自己的进步曲线和低谷期。
+                </RevealUp>
+                <RevealUp delay={0.1}>
+                  <p className="mt-4 text-zinc-400 leading-relaxed">
+                    借鉴 GitHub 贡献图的可视化方式，用颜色深浅记录每一天的坚持。无需联网，所有数据存储在本地 SQLite 数据库中，完全属于你。
                   </p>
-
-                  <div className="mt-8 grid grid-cols-3 gap-3 sm:gap-4">
-                    <div className="border border-border/50 rounded-xl p-3 sm:p-4">
-                      <div className="font-mono text-xl sm:text-2xl font-bold">
-                        SQLite
-                      </div>
-                      <div className="text-[11px] sm:text-xs text-muted-foreground mt-1">
-                        本地存储
-                      </div>
+                </RevealUp>
+                <RevealUp delay={0.2}>
+                  <div className="mt-8 grid grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                      <p className="text-xl font-bold gradient-text">365 天</p>
+                      <p className="mt-1 text-xs text-zinc-500">年度完整记录</p>
                     </div>
-                    <div className="border border-border/50 rounded-xl p-3 sm:p-4">
-                      <div className="font-mono text-xl sm:text-2xl font-bold">
-                        fl_chart
-                      </div>
-                      <div className="text-[11px] sm:text-xs text-muted-foreground mt-1">
-                        图表库
-                      </div>
-                    </div>
-                    <div className="border border-border/50 rounded-xl p-3 sm:p-4">
-                      <div className="font-mono text-xl sm:text-2xl font-bold">
-                        实时
-                      </div>
-                      <div className="text-[11px] sm:text-xs text-muted-foreground mt-1">
-                        数据同步
-                      </div>
+                    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                      <p className="text-xl font-bold gradient-text">本地存储</p>
+                      <p className="mt-1 text-xs text-zinc-500">数据完全私有</p>
                     </div>
                   </div>
-                </div>
-              </RevealDiv>
+                </RevealUp>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Tech Stack */}
-        <section className="border-b border-border/50" aria-labelledby="tech-heading">
-          <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20 md:py-28">
-            <RevealDiv>
-              <div className="mb-12 sm:mb-16">
-                <span className="font-mono text-xs tracking-widest uppercase text-muted-foreground block mb-4">
-                  技术栈
-                </span>
-                <h2
-                  id="tech-heading"
-                  className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight"
-                >
-                  现代技术构建
-                </h2>
-              </div>
-            </RevealDiv>
+        <section id="tech" className="py-32">
+          <div className="mx-auto max-w-6xl px-6">
+            <RevealUp>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">技术栈</h2>
+            </RevealUp>
+            <RevealUp delay={0.1}>
+              <p className="mt-4 text-zinc-400">
+                基于成熟的开源技术构建，稳定可靠。
+              </p>
+            </RevealUp>
 
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border/50">
-              {techStack.map((tech, i) => (
-                <RevealDiv key={tech.name} delay={i * 60}>
-                  <div className="bg-background p-5 sm:p-6 group hover:bg-secondary/50 transition-colors duration-300">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-foreground/30 group-hover:bg-foreground/60 transition-colors" aria-hidden="true" />
-                      <h3 className="font-mono text-sm font-semibold">
-                        {tech.name}
-                      </h3>
+            <StaggerGroup className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {techStack.map((t) => (
+                <StaggerItem key={t.name}>
+                  <div className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/[0.02] px-5 py-4 transition-colors hover:border-white/10 hover:bg-white/[0.04]">
+                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500" />
+                    <div>
+                      <p className="text-sm font-medium">{t.name}</p>
+                      <p className="text-xs text-zinc-500">{t.desc}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground pl-5">
-                      {tech.desc}
-                    </p>
                   </div>
-                </RevealDiv>
+                </StaggerItem>
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Mid-page CTA */}
-        <section className="border-b border-border/50" aria-label="下载">
-          <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20 md:py-24">
-            <RevealDiv>
-              <div className="border border-border/50 rounded-2xl sm:rounded-3xl p-8 sm:p-12 md:p-16 text-center relative overflow-hidden">
-                <div
-                  className="absolute inset-0 opacity-[0.02]"
-                  style={{
-                    backgroundImage:
-                      "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
-                    backgroundSize: "40px 40px",
-                  }}
-                  aria-hidden="true"
-                />
-                <div className="relative">
-                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4">
-                    准备好开始了吗？
-                  </h2>
-                  <p className="text-muted-foreground max-w-md mx-auto mb-8 text-base sm:text-lg leading-relaxed">
-                    下载 APK，用黑白极简的设计记录你的每一个自律瞬间。
-                  </p>
-                  <Link
-                    href="https://github.com/aoye666/liaoleme/releases/latest"
-                    className="inline-flex items-center gap-2 bg-foreground text-background px-8 py-4 rounded-full text-sm font-semibold hover:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Icon name="download" className="w-4 h-4" />
-                    获取最新版本
-                    <Icon name="arrowRight" className="w-4 h-4" />
-                  </Link>
-                </div>
-              </div>
-            </RevealDiv>
+            </StaggerGroup>
           </div>
         </section>
 
         {/* Final CTA */}
-        <section aria-label="下载">
-          <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20 md:py-28">
-            <RevealDiv>
-              <div className="text-center max-w-2xl mx-auto">
-                <div className="inline-flex items-center gap-2 border border-border/50 rounded-full px-4 py-1.5 mb-8">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-foreground/60 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-foreground/80" />
-                  </span>
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    Open Source · MIT License
-                  </span>
-                </div>
-                <h2 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-6">
-                  开始你的
-                  <br />
-                  自律之旅
-                </h2>
-                <p className="text-muted-foreground max-w-md mx-auto mb-10 text-base sm:text-lg leading-relaxed">
-                  开源免费，无需注册。下载即用，数据全存在本地。
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link
-                    href="https://github.com/aoye666/liaoleme/releases/latest"
-                    className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-8 py-4 rounded-full text-sm font-semibold hover:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Icon name="download" className="w-4 h-4" />
-                    下载最新 APK
-                  </Link>
-                  <Link
-                    href="https://github.com/aoye666/liaoleme"
-                    className="inline-flex items-center justify-center gap-2 border border-border px-8 py-4 rounded-full text-sm font-semibold hover:border-foreground/30 transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Icon name="github" className="w-4 h-4" />
-                    查看源码
-                  </Link>
-                </div>
+        <section className="relative py-32">
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="orb h-[400px] w-[400px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-600/20" />
+          </div>
+          <div className="relative mx-auto max-w-3xl px-6 text-center">
+            <RevealUp>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
+                今天就开始
+                <span className="gradient-text">你的记录</span>
+              </h2>
+            </RevealUp>
+            <RevealUp delay={0.1}>
+              <p className="mx-auto mt-6 max-w-md text-zinc-400">
+                免注册，纯本地，完全免费。下载 APK，三分钟上手。
+              </p>
+            </RevealUp>
+            <RevealUp delay={0.2}>
+              <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+                <a
+                  href="https://github.com/aoye666/liaoleme/releases"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary glow-accent flex items-center gap-2 rounded-xl px-8 py-3.5 text-sm font-semibold"
+                >
+                  <Icon name="download" className="h-4 w-4" />
+                  下载 Android APK
+                </a>
+                <a
+                  href="https://github.com/aoye666/liaoleme"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary flex items-center gap-2 rounded-xl px-8 py-3.5 text-sm font-medium"
+                >
+                  <Icon name="github" className="h-4 w-4" />
+                  Star on GitHub
+                </a>
               </div>
-            </RevealDiv>
+            </RevealUp>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border/50" role="contentinfo">
-        <div className="mx-auto max-w-6xl px-6 py-10 sm:py-12">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div>
-              <div className="font-mono text-base sm:text-lg font-bold tracking-tight mb-1">
-                录了么
-              </div>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                © 2024 aoye666 · MIT License
-              </p>
-
+      <footer className="border-t border-white/5 py-12">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-6 sm:flex-row">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-cyan-500">
+              <span className="text-[10px] font-bold text-white">录</span>
             </div>
-            <div className="flex items-center gap-6 sm:gap-8">
-              <Link
-                href="https://github.com/aoye666/liaoleme"
-                className="text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:underline"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                GitHub
-              </Link>
-              <Link
-                href="https://github.com/aoye666/liaoleme/releases/latest"
-                className="text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:underline"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Releases
-              </Link>
-              <span className="text-xs sm:text-sm text-muted-foreground font-mono hidden sm:inline">
-                Built with Next.js
-              </span>
-            </div>
+            <span className="text-sm text-zinc-500">录了么</span>
+          </div>
+          <p className="text-xs text-zinc-600">
+            &copy; 2025 aoye666. MIT License. Built with Next.js &amp; Flutter.
+          </p>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://github.com/aoye666/liaoleme"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-500 transition-colors hover:text-white"
+            >
+              <Icon name="github" className="h-4 w-4" />
+            </a>
+            <a
+              href="https://github.com/aoye666/liaoleme/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-zinc-500 transition-colors hover:text-white"
+            >
+              Releases
+            </a>
           </div>
         </div>
       </footer>
