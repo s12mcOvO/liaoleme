@@ -276,8 +276,8 @@ function PhoneDemo() {
               <svg width="220" height="220" viewBox="0 0 200 200" className="block h-auto w-[200px]">
                 <circle cx="100" cy="100" r="90" fill="#e5e5e5" />
                 <path d="M100,100 L100,10 A90,90 0 0,1 100,190 Z" fill="#d4d4d4" />
-                <text x="68" y="100" textAnchor="middle" dominantBaseline="central" fontSize="22" fontWeight="700" fill="#737373">不撸</text>
-                <text x="135" y="100" textAnchor="middle" dominantBaseline="central" fontSize="22" fontWeight="700" fill="#a3a3a3">撸</text>
+                <text x="68" y="100" textAnchor="middle" dominantBaseline="central" fontSize="22" fontWeight="700" fill="#737373">守心</text>
+                <text x="135" y="100" textAnchor="middle" dominantBaseline="central" fontSize="22" fontWeight="700" fill="#a3a3a3">放逐</text>
                 <circle cx="100" cy="100" r="24" fill="white" stroke="#e5e5e5" strokeWidth="1.5" />
                 <text x="100" y="100" textAnchor="middle" dominantBaseline="central" fontSize="14" fontWeight="700" fill="#a3a3a3">
                   {spinning ? "…" : "转"}
@@ -302,16 +302,16 @@ function PhoneDemo() {
         {/* 底部按钮 */}
         <div className="flex gap-3 px-4 pb-5">
           <button
-            onClick={() => setChecked("不撸")}
-            className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all duration-200 ${checked === "不撸" ? "bg-emerald-200 text-emerald-700 shadow-sm shadow-emerald-200/50" : "bg-emerald-100 text-emerald-600 active:scale-[0.97]"}`}
+            onClick={() => setChecked("守心")}
+            className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all duration-200 ${checked === "守心" ? "bg-emerald-200 text-emerald-700 shadow-sm shadow-emerald-200/50" : "bg-emerald-100 text-emerald-600 active:scale-[0.97]"}`}
           >
-            不撸
+            守心
           </button>
           <button
-            onClick={() => setChecked("撸")}
-            className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all duration-200 ${checked === "撸" ? "bg-white text-neutral-800 shadow-sm shadow-neutral-200" : "bg-white text-neutral-400 active:scale-[0.97]"}`}
+            onClick={() => setChecked("放逐")}
+            className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all duration-200 ${checked === "放逐" ? "bg-white text-neutral-800 shadow-sm shadow-neutral-200" : "bg-white text-neutral-400 active:scale-[0.97]"}`}
           >
-            撸
+            放逐
           </button>
         </div>
 
