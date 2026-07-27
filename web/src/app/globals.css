@@ -1,12 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0c0c0d;
-  --foreground: #e8e8e6;
-  --surface: #141415;
-  --border: #262628;
-  --accent: #d4874d;
-  --muted: #6e6e73;
+  --background: #0a0a0a;
+  --foreground: #f2f2f0;
+  --surface: #141414;
+  --border: rgba(255, 255, 255, 0.12);
+  --muted: #8a8a8a;
   --font-sans: var(--font-geist);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,7 +15,6 @@
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-border: var(--border);
-  --color-accent: var(--accent);
   --color-muted: var(--muted);
   --font-sans: var(--font-geist);
   --font-mono: var(--font-geist-mono);
@@ -29,12 +27,13 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist), system-ui, sans-serif;
+  font-family: var(--font-geist), "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--accent);
+  background: var(--foreground);
   color: var(--background);
 }
 
